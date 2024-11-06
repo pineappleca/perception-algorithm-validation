@@ -2,12 +2,12 @@ from .transform_3d import (
     PadMultiViewImage, NormalizeMultiviewImage, 
     PhotoMetricDistortionMultiViewImage, CustomCollect3D, RandomScaleImageMultiViewImage)
 from .formating import CustomDefaultFormatBundle3D
-from .augmentation import (CropResizeFlipImage, GlobalRotScaleTransImage)
+from .augmentation import (CropResizeFlipImage, GlobalRotScaleTransImage, CorruptionMethods)
 from .dd3d_mapper import DD3DMapper
 __all__ = [
     'PadMultiViewImage', 'NormalizeMultiviewImage', 
     'PhotoMetricDistortionMultiViewImage', 'CustomDefaultFormatBundle3D', 'CustomCollect3D',
     'RandomScaleImageMultiViewImage',
-    'CropResizeFlipImage', 'GlobalRotScaleTransImage',
+    'CropResizeFlipImage', 'GlobalRotScaleTransImage', 'CorruptionMethods',
     'DD3DMapper',
 ]

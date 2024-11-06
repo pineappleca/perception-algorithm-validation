@@ -181,6 +181,16 @@ test_pipeline = [
     dict(type='NormalizeMultiviewImage', **img_norm_cfg),
     dict(type='PadMultiViewImage', size_divisor=32),
     dict(
+        type='CorruptionMethods',
+        corruption_severity_dict=
+            {
+                'sun_sim':20,
+                'light_aug':20
+            },
+    ),
+    # dict(type='RandomScaleImageMultiViewImage', scales=[0.7]),
+    # dict(type='GlobalRotScaleTransImage'),
+    dict(
         type='MultiScaleFlipAug3D',
         img_scale=(1600, 900),
         pts_scale_ratio=1,

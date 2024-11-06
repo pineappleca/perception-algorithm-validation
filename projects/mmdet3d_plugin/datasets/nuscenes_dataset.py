@@ -10,7 +10,8 @@ import torch
 import numpy as np
 from nuscenes.eval.common.utils import quaternion_yaw, Quaternion
 from .nuscnes_eval import NuScenesEval_custom
-from projects.mmdet3d_plugin.models.utils.visual import save_tensor
+# from nuscnes_eval import NuScenesEval_custom
+# from projects.mmdet3d_plugin.models.utils.visual import save_tensor
 from mmcv.parallel import DataContainer as DC
 import random
 
@@ -238,3 +239,8 @@ class CustomNuScenesDataset(NuScenesDataset):
         detail['{}/NDS'.format(metric_prefix)] = metrics['nd_score']
         detail['{}/mAP'.format(metric_prefix)] = metrics['mean_ap']
         return detail
+
+# # 尝试对result_path进行直接评估
+# if __name__ == '__main__':
+#     cnsd = CustomNuScenesDataset()
+#     cnsd._evaluate_single('/home/step/data/Documents/BEVFormer/test/bevformer_base/Sat_Nov__2_01_29_01_2024/results_nusc.json')

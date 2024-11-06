@@ -311,11 +311,14 @@ class RandomScaleImageMultiViewImage(object):
 
         y_size = [int(img.shape[0] * rand_scale) for img in results['img']]
         x_size = [int(img.shape[1] * rand_scale) for img in results['img']]
+        # print(y_size, x_size)
         scale_factor = np.eye(4)
         scale_factor[0, 0] *= rand_scale
         scale_factor[1, 1] *= rand_scale
         results['img'] = [mmcv.imresize(img, (x_size[idx], y_size[idx]), return_scale=False) for idx, img in
                           enumerate(results['img'])]
+        # import numpy as np
+        # print(np.array(results['img']).shape)
         lidar2img = [scale_factor @ l2i for l2i in results['lidar2img']]
         results['lidar2img'] = lidar2img
         results['img_shape'] = [img.shape for img in results['img']]
@@ -328,3 +331,4 @@ class RandomScaleImageMultiViewImage(object):
         repr_str = self.__class__.__name__
         repr_str += f'(size={self.scales}, '
         return repr_str
+

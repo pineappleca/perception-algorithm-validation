@@ -5,6 +5,8 @@
 # ---------------------------------------------
 import argparse
 import mmcv
+import pickle
+import time
 import os
 import torch
 import warnings
@@ -202,6 +204,7 @@ def main():
         shuffle=False,
         nonshuffler_sampler=cfg.data.nonshuffler_sampler,
     )
+    print(data_loader)
 
     # build the model and load checkpoint
     cfg.model.train_cfg = None
@@ -236,6 +239,11 @@ def main():
             broadcast_buffers=False)
         outputs = custom_multi_gpu_test(model, data_loader, args.tmpdir,
                                         args.gpu_collect)
+        
+        # 为防止内存溢出，将output list保存为文件
+        buffer_filename = f'./test_output.pkl'
+        with open(buffer_filename, 'wb') as f:
+            pickle.dump(outputs, f)
 
     rank, _ = get_dist_info()
     if rank == 0:
