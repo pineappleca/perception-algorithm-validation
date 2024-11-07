@@ -426,7 +426,7 @@ class CorruptionMethods(object):
         #     )
             
             
-    
+
     def __call__(self, results):
         """Call function to augment common corruptions.
         """
@@ -446,6 +446,8 @@ class CorruptionMethods(object):
             image_aug_rgb = self.sun_sim_mono(
                 image=image_aug_rgb,
             )
+        # 生成随机数
+        
         
         # 整体亮度增强(对所有摄像头生效)
         if 'light_aug' in self.corruption_severity_dict:
