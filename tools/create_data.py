@@ -79,9 +79,12 @@ def nuscenes_data_prep(root_path,
             root_path, info_test_path, version=version)
     else:
         info_train_path = osp.join(
-            out_dir, f'{info_prefix}_infos_temporal_train.pkl')
+            out_dir, f'{info_prefix}_partial_train.pkl')
+        # 修改小批量验证集的文件名
+        # info_val_path = osp.join(
+        #     out_dir, f'{info_prefix}_infos_temporal_val.pkl')
         info_val_path = osp.join(
-            out_dir, f'{info_prefix}_infos_temporal_val.pkl')
+            out_dir, f'{info_prefix}_partial_val.pkl')
         nuscenes_converter.export_2d_annotation(
             root_path, info_train_path, version=version)
         nuscenes_converter.export_2d_annotation(
@@ -163,7 +166,7 @@ def waymo_data_prep(root_path,
         max_sweeps (int): Number of input consecutive frames. Default: 5 \
             Here we store pose information of these frames for later use.
     """
-    from tools.data_converter import waymo_converter as waymo
+    from data_converter import waymo_converter as waymo
 
     splits = ['training', 'validation', 'testing']
 

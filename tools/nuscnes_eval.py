@@ -6,7 +6,6 @@ import time
 from typing import Tuple, Dict, Any
 import torch
 import numpy as np
-import pickle
 
 from nuscenes import NuScenes
 from nuscenes.eval.common.config import config_factory
@@ -251,12 +250,6 @@ def load_gt(nusc: NuScenes, eval_split: str, box_cls, verbose: bool = False):
     :param verbose: Whether to print messages to stdout.
     :return: The GT boxes.
     """
-    # '''
-    # 从nuscenes_partial_gt.pkl中加载ground truth
-    # '''
-    # input_filename = '/home/step/data/Documents/BEVFormer/data/nuscenes/nuscenes_partial_gt.pkl'
-    # with open(input_filename, 'rb') as f:
-    #     all_annotations = pickle.load(f)
 
     # Init.
     if box_cls == DetectionBox_modified:
@@ -363,7 +356,6 @@ def load_gt(nusc: NuScenes, eval_split: str, box_cls, verbose: bool = False):
 
     if verbose:
         print("Loaded ground truth annotations for {} samples.".format(len(all_annotations.sample_tokens)))
-    
 
     return all_annotations
 

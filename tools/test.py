@@ -241,7 +241,8 @@ def main():
                                         args.gpu_collect)
         
         # 为防止内存溢出，将output list保存为文件
-        buffer_filename = f'./test_output.pkl'
+        # 文件名包含时间戳，避免重复
+        buffer_filename = f'buffer.pkl'
         with open(buffer_filename, 'wb') as f:
             pickle.dump(outputs, f)
 
@@ -271,4 +272,7 @@ def main():
 
 
 if __name__ == '__main__':
+    start_time = time.time()
     main()
+    end_time = time.time()
+    print(f"Time cost: {end_time - start_time}s")
