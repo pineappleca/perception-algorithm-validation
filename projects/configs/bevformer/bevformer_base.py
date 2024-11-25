@@ -178,16 +178,20 @@ train_pipeline = [
 
 test_pipeline = [
     dict(type='LoadMultiViewImageFromFiles', to_float32=True),
-    dict(type='NormalizeMultiviewImage', **img_norm_cfg),
-    dict(type='PadMultiViewImage', size_divisor=32),
+    # 加载3d标注信息
+    # dict(type='LoadAnnotations3D', with_bbox_3d=True, with_label_3d=True, with_attr_label=False),
     dict(
         type='CorruptionMethods',
         corruption_severity_dict=
             {
-                'sun_sim':20,
-                'light_aug':20
+                # 'object_motion_sim':2,
+                # 'sun_sim':60,
+                'light_des':0,
+                # 'light_des':80,
             },
     ),
+    dict(type='NormalizeMultiviewImage', **img_norm_cfg),
+    dict(type='PadMultiViewImage', size_divisor=32),
     # dict(type='RandomScaleImageMultiViewImage', scales=[0.7]),
     # dict(type='GlobalRotScaleTransImage'),
     dict(
@@ -225,12 +229,15 @@ data = dict(
              data_root=data_root,
              ann_file=data_root + 'nuscenes_partial_val.pkl',
              pipeline=test_pipeline,  bev_size=(bev_h_, bev_w_),
-             classes=class_names, modality=input_modality, samples_per_gpu=1),
+             classes=class_names, modality=input_modality,
+             test_mode=False, 
+             samples_per_gpu=1),
     test=dict(type=dataset_type,
               data_root=data_root,
               ann_file=data_root + 'nuscenes_partial_val.pkl',
               pipeline=test_pipeline, bev_size=(bev_h_, bev_w_),
-              classes=class_names, modality=input_modality),
+              classes=class_names, modality=input_modality, 
+              test_mode=False),
     shuffler_sampler=dict(type='DistributedGroupSampler'),
     nonshuffler_sampler=dict(type='DistributedSampler')
 )

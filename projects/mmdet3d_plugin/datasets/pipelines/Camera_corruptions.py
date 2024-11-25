@@ -200,18 +200,43 @@ class ImageAddSunMono():
         print(self.__class__.__name__, ': please set numpy seed !')
         self.severity = severity
 
-    def __call__(self, image, watch_img=False, file_path='') -> np.array:
+    def __call__(self, image, sample_idx, watch_img=True) -> np.array:
         """
             image should be numpy array : H * W * 3
             in uint8 (0~255) and RGB
-
         """
         severity = self.severity
         temp_dict_trans_information = {}
 
-        image_aug = self.sun_sim_img(image, severity, watch_img, file_path, temp_dict_trans_information)
+        # 在逆光条件下适当降低环境光照
+        # opencv的输入图像为BGR格式
+        image_bgr = image[:, :, [2, 1, 0]]
+        image_gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
+        # 设置阈值将图像二值化
+        # _, thresh = cv2.threshold(image_gray, 100, 255, cv2.THRESH_BINARY_INV)
+        # 创建一个掩码，用于控制哪些区域增强对比度
+        light_bound = 210
+        # 亮部
+        mask = image_gray >= light_bound
+        # 暗部
+        mask_ = image_gray < light_bound
+        # # Expand dimensions of the mask to match image_bgr
+        # mask = mask[:, :, np.newaxis]
+        # mask_ = mask_[:, :, np.newaxis]
 
-        return image_aug
+        # 通过掩码增强对比度
+        for i in range(3):
+            image_bgr[:, :, i][mask_] = cv2.convertScaleAbs(image_bgr[:, :, i][mask_], alpha=0.2, beta=0).flatten()
+            image_bgr[:, :, i][mask] = cv2.convertScaleAbs(image_bgr[:, :, i][mask], alpha=1.5, beta=0).flatten()
+        # image_bgr[mask_] = cv2.convertScaleAbs(image_bgr[mask_], alpha=0.7, beta=-50)
+        # image_bgr[mask] = cv2.convertScaleAbs(image_bgr[mask], alpha=1.2, beta=50)
+        # image_rgb = image_bgr[:, :, [2, 1, 0]]
+        # alpha = 1.0 - 0.005 * severity
+        # image_bgr = cv2.convertScaleAbs(image_bgr, alpha=alpha, beta=0)
+        image_rgb = image_bgr[:, :, [2, 1, 0]]
+        file_path = f'./corruption_valid/{sample_idx}.jpg'
+        image_aug_rgb = self.sun_sim_img(image_rgb, severity, watch_img, file_path, temp_dict_trans_information)
+        return image_aug_rgb
     
 
 
@@ -232,8 +257,10 @@ class ImageAddSunMono():
 
         img_width = image.shape[1]
         img_height = image.shape[0]
-        sun_u_range = [0.25, 0.75]
-        sun_v_range = [0.30, 0.45]
+        # sun_u_range = [0.25, 0.75]
+        # sun_v_range = [0.30, 0.45]
+        sun_u_range = [0.45, 0.55]
+        sun_v_range = [0.25, 0.35]
         sun_u = np.random.uniform(*sun_u_range)*img_width
         sun_v = np.random.uniform(*sun_v_range)*img_height
         sun_uv = np.array([sun_u, sun_v])
@@ -265,6 +292,8 @@ class ImageAddSunMono():
         if watch_img:
             flare_image_save = torch.from_numpy(flare_image_rgb).permute(2,0,1).float() /255.
             save_image(flare_image_save, padding=0, pad_value=255., nrow=1, fp=file_path)
+            # flare_image_bgr_uint8 = flare_image_rgb_uint8[:, :, [2, 1, 0]]
+            # cv2.imwrite(file_path, flare_image_bgr_uint8)
  
 
         return flare_image_rgb_uint8
@@ -274,9 +303,37 @@ class ImageLightAug():
     def __init__(self, severity) -> None:
         self.severity = severity
     
-    def __call__(self, image):
-        beta = 20 + self.severity
-        image = cv2.convertScaleAbs(image, alpha=1.0, beta=beta)
+    def __call__(self, image, sample_idx, watch_img=True):
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        h, s, v = cv2.split(hsv)
+        v = cv2.add(v, 20 + 0.5 * self.severity)
+        v = np.clip(v, 0, 255)
+        final_hsv = cv2.merge((h, s, v))
+        image = cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
+        if watch_img:
+            file_path = f'./corruption_valid/{sample_idx}.jpg'
+            cv2.imwrite(file_path, image)
+        return image
+
+
+class ImageLightDes():
+    def __init__(self, severity) -> None:
+        self.severity = severity
+    
+    def __call__(self, image, sample_idx, watch_img=True):
+        # beta = - 60 - 0.1 * self.severity
+        # # alpha = 0.9 - 0.0005 * self.severity
+        # alpha = 0.9
+        # image = cv2.convertScaleAbs(image, alpha=alpha, beta=beta)
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        h, s, v = cv2.split(hsv)
+        v = cv2.add(v, - 60 - 0.5 * self.severity)
+        v = np.clip(v, 0, 255)
+        final_hsv = cv2.merge((h, s, v))
+        image = cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
+        if watch_img:
+            file_path = f'./corruption_valid/{sample_idx}.jpg'
+            cv2.imwrite(file_path, image)
         return image
 
 

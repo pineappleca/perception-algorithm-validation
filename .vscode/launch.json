@@ -1,36 +1,33 @@
 {
-    // 使用 IntelliSense 了解相关属性。 
-    // 悬停以查看现有属性的描述。
-    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
         {
-            "name": "Python test",
+            "name": "Python test with torchrun",
             "type": "debugpy",
             "request": "launch",
             "program": "/home/step/data/Documents/BEVFormer/tools/test.py",
             "console": "integratedTerminal",
             "env": {
-                "PYTHONPATH": "${workspacedFolder}"
+                "PYTHONPATH": "/home/step/data/Documents/BEVFormer"
             },
             "cwd": "/home/step/data/Documents/BEVFormer",
             "justMyCode": false,
             "args": [
-                "-m",
-                "torch.distributed.launch",
-                "--nproc_per_node",
-                "1",
-                "--master_port",
-                "-29503",
-                "/home/step/data/Documents/BEVFormer/tools/test.py",
                 "./projects/configs/bevformer/bevformer_base.py",
                 "./ckpts/bevformer_r101_dcn_24ep.pth",
-                "--launcher",
-                "pytorch",
                 "--eval",
                 "bbox"
             ],
-        },
+            "exceptionOptions": [
+                {
+                    "path": [
+                        {
+                            "names": ["UserWarning"]
+                        }
+                    ],
+                    "breakMode": "never"
+                }
+            ]
+        }
     ]
 }

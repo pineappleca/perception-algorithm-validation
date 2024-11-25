@@ -251,9 +251,9 @@ def load_gt(nusc: NuScenes, eval_split: str, box_cls, verbose: bool = False):
     :param verbose: Whether to print messages to stdout.
     :return: The GT boxes.
     """
-    # '''
-    # 从nuscenes_partial_gt.pkl中加载ground truth
-    # '''
+    '''
+    从nuscenes_partial_gt.pkl中加载ground truth
+    '''
     # input_filename = '/home/step/data/Documents/BEVFormer/data/nuscenes/nuscenes_partial_gt.pkl'
     # with open(input_filename, 'rb') as f:
     #     all_annotations = pickle.load(f)

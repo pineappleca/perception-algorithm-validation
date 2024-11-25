@@ -10,6 +10,9 @@ import time
 import os
 import torch
 import warnings
+import json
+import csv
+import numpy as np
 from mmcv import Config, DictAction
 from mmcv.cnn import fuse_conv_bn
 from mmcv.parallel import MMDataParallel, MMDistributedDataParallel
@@ -95,6 +98,13 @@ def parse_args():
         default='none',
         help='job launcher')
     parser.add_argument('--local_rank', type=int, default=0)
+
+    # 设置触发条件的种类和参数
+    parser.add_argument(
+        '--corruption',
+        type=str,
+        help='JSON string for corruption severity dictionary')
+    
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
@@ -182,6 +192,15 @@ def main():
         if samples_per_gpu > 1:
             for ds_cfg in cfg.data.test:
                 ds_cfg.pipeline = replace_ImageToTensor(ds_cfg.pipeline)
+    
+    # 解析触发条件参数，并将 corruption_severity_dict 传递给配置文件
+    if args.corruption:
+        corruption_severity_dict = json.loads(args.corruption)
+    else:
+        corruption_severity_dict = {}
+    for pipeline in cfg.data.test.pipeline:
+        if pipeline['type'] == 'CorruptionMethods':
+            pipeline['corruption_severity_dict'] = corruption_severity_dict
 
     # init distributed env first, since logger depends on the dist info.
     if args.launcher == 'none':
@@ -229,9 +248,9 @@ def main():
         model.PALETTE = dataset.PALETTE
 
     if not distributed:
-        assert False
-        # model = MMDataParallel(model, device_ids=[0])
-        # outputs = single_gpu_test(model, data_loader, args.show, args.show_dir)
+        # assert False
+        model = MMDataParallel(model, device_ids=[0])
+        outputs = single_gpu_test(model, data_loader, args.show, args.show_dir)
     else:
         model = MMDistributedDataParallel(
             model.cuda(),
@@ -268,7 +287,38 @@ def main():
                 eval_kwargs.pop(key, None)
             eval_kwargs.update(dict(metric=args.eval, **kwargs))
 
-            print(dataset.evaluate(outputs, **eval_kwargs))
+            res_eval = dataset.evaluate(outputs, **eval_kwargs)
+
+            # 获取触发条件的严重程度
+            light_des = corruption_severity_dict.get('light_des', -1)
+
+            # 获取MAP、NDS和MAE的值
+            mAP = round(res_eval['pts_bbox_NuScenes/mAP'], 4)
+            NDS = round(res_eval['pts_bbox_NuScenes/NDS'], 4)
+            mae_array = np.array([res_eval['pts_bbox_NuScenes/mATE'],
+                                  res_eval['pts_bbox_NuScenes/mASE'],
+                                  res_eval['pts_bbox_NuScenes/mAOE'],
+                                  res_eval['pts_bbox_NuScenes/mAVE'],
+                                  res_eval['pts_bbox_NuScenes/mAAE']])
+            mAE = round(np.mean(mae_array), 4)
+            
+            # 将多个指标写入 result_eval.csv 文件
+            csv_file = './result_eval.csv'
+            # 检查文件是否存在
+            file_exists = os.path.isfile(csv_file)
+            # 打开文件，追加模式
+            with open(csv_file, mode='a', newline='') as file:
+                writer = csv.writer(file)
+                # 如果文件不存在，写入表头
+                if not file_exists:
+                    writer.writerow(["light_des", "mAP", "NDS", "mAE"])
+                # 写入数据
+                writer.writerow([light_des, mAP, NDS, mAE])
+            # print(type(res_eval))
+            # 将 res_eval 写入 result_eval.txt 文件
+            with open('./result_eval.txt', 'w') as f:
+                json.dump(res_eval, f, indent=4)
+
 
 
 if __name__ == '__main__':

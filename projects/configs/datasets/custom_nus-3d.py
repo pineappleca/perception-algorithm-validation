@@ -123,7 +123,7 @@ data = dict(
         pipeline=test_pipeline,
         classes=class_names,
         modality=input_modality,
-        test_mode=True,
+        test_mode=False,
         box_type_3d='LiDAR'),
     test=dict(
         type=dataset_type,
@@ -132,7 +132,7 @@ data = dict(
         pipeline=test_pipeline,
         classes=class_names,
         modality=input_modality,
-        test_mode=True,
+        test_mode=False,
         box_type_3d='LiDAR'))
 # For nuScenes dataset, we usually evaluate the model at the end of training.
 # Since the models are trained by 24 epochs by default, we set evaluation
