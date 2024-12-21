@@ -13,10 +13,11 @@
 import os
 from nuscenes.nuscenes import NuScenes
 from nuscenes.utils.splits import create_splits_scenes
+from tqdm import tqdm
 
 # 初始化 NuScenes 数据集
 nusc = NuScenes(version='v1.0-trainval', dataroot='./data/nuscenes', verbose=True)
-output_dir = './nuscenes_video'
+output_dir = './nuscenes_video_eval'
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
@@ -38,14 +39,14 @@ def list_scenes_by_names(scene_names):
             print()
 
 def generate_video(scene_names, output_dir):
-    for scene_name in scene_names:
+    for scene_name in tqdm(scene_names, desc="Generating videos"):
         table_name, field, query = 'scene', 'name', scene_name
         my_scene_token = nusc.field2token(table_name, field, query)[0]
         # print("token", my_scene_token)
         nusc.render_scene_channel(my_scene_token, 'CAM_FRONT', out_path=os.path.join(output_dir, f"{query}.avi"))
 
 # 示例场景名称列表
-val_scene_names = create_splits_scenes()['val'][:5]
+val_scene_names = create_splits_scenes()['val']
 print(val_scene_names)
 
 # 列出给定场景名称列表中所有场景的信息

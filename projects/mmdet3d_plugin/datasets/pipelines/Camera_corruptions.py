@@ -208,34 +208,37 @@ class ImageAddSunMono():
         severity = self.severity
         temp_dict_trans_information = {}
 
-        # 在逆光条件下适当降低环境光照
-        # opencv的输入图像为BGR格式
-        image_bgr = image[:, :, [2, 1, 0]]
-        image_gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
-        # 设置阈值将图像二值化
-        # _, thresh = cv2.threshold(image_gray, 100, 255, cv2.THRESH_BINARY_INV)
-        # 创建一个掩码，用于控制哪些区域增强对比度
-        light_bound = 210
-        # 亮部
-        mask = image_gray >= light_bound
-        # 暗部
-        mask_ = image_gray < light_bound
-        # # Expand dimensions of the mask to match image_bgr
-        # mask = mask[:, :, np.newaxis]
-        # mask_ = mask_[:, :, np.newaxis]
+        # # 在逆光条件下适当降低环境光照
+        # # opencv的输入图像为BGR格式
+        # image_bgr = image[:, :, [2, 1, 0]]
+        # image_gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
+        # light_bound = 210
+        # # 亮部
+        # mask = image_gray >= light_bound
+        # # 暗部
+        # mask_ = image_gray < light_bound
 
-        # 通过掩码增强对比度
-        for i in range(3):
-            image_bgr[:, :, i][mask_] = cv2.convertScaleAbs(image_bgr[:, :, i][mask_], alpha=0.2, beta=0).flatten()
-            image_bgr[:, :, i][mask] = cv2.convertScaleAbs(image_bgr[:, :, i][mask], alpha=1.5, beta=0).flatten()
-        # image_bgr[mask_] = cv2.convertScaleAbs(image_bgr[mask_], alpha=0.7, beta=-50)
-        # image_bgr[mask] = cv2.convertScaleAbs(image_bgr[mask], alpha=1.2, beta=50)
+        # # 通过掩码增强对比度
+        # for i in range(3):
+        #     image_bgr[:, :, i][mask_] = cv2.convertScaleAbs(image_bgr[:, :, i][mask_], alpha=0.2, beta=0).flatten()
+        #     image_bgr[:, :, i][mask] = cv2.convertScaleAbs(image_bgr[:, :, i][mask], alpha=1.5, beta=0).flatten()
         # image_rgb = image_bgr[:, :, [2, 1, 0]]
-        # alpha = 1.0 - 0.005 * severity
-        # image_bgr = cv2.convertScaleAbs(image_bgr, alpha=alpha, beta=0)
-        image_rgb = image_bgr[:, :, [2, 1, 0]]
+
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        h, s, v = cv2.split(hsv)
+        
+        # 识别图像的亮部和暗部
+        light_bound = 220
+        mask_light = v >= light_bound
+        mask_dark = v < light_bound
+        
+        v[mask_light] = np.clip(v[mask_light] + (100 + 0.5 * self.severity), 0, 255)
+        v[mask_dark] = np.clip(v[mask_dark] - (60 + 0.5 * self.severity), 0, 255)
+        # v = np.clip(v, 0, 255)
+        final_hsv = cv2.merge((h, s, v))
+        image = cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
         file_path = f'./corruption_valid/{sample_idx}.jpg'
-        image_aug_rgb = self.sun_sim_img(image_rgb, severity, watch_img, file_path, temp_dict_trans_information)
+        image_aug_rgb = self.sun_sim_img(image, 5, watch_img, file_path, temp_dict_trans_information)
         return image_aug_rgb
     
 
@@ -306,7 +309,7 @@ class ImageLightAug():
     def __call__(self, image, sample_idx, watch_img=True):
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         h, s, v = cv2.split(hsv)
-        v = cv2.add(v, 20 + 0.5 * self.severity)
+        v = cv2.add(v, 50 + 0.5 * self.severity)
         v = np.clip(v, 0, 255)
         final_hsv = cv2.merge((h, s, v))
         image = cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
@@ -1461,21 +1464,19 @@ class ImageBBoxMotionBlurLeftRightMono():
 
 class ImageMotionBlurFrontBack():
     def __init__(self, severity, corrput_list=[0.02*i for i in range(1,6)]) -> None:
-        self.severity = severity
-        self.corrpution = corrput_list[severity-1]
+        # self.severity = severity
+        self.corruption = 0.02 * (1 + severity // 20)
 
-
-
-    def __call__(self, image, watch_img=False, file_path='') -> np.array:
+    def __call__(self, image, sample_idx, watch_img=True, file_path='') -> np.array:
         """
             image should be numpy array : H * W * 3
             in uint8 (0~255) and RGB
         """
-        corrpution = self.corrpution
-
+        corrpution = self.corruption
         image_rgb_255 = image
         images_aug = self.zoom_blur(image_rgb_255, corrpution)
         image_aug_rgb_255 = images_aug
+        file_path = f'./corruption_valid/{sample_idx}.jpg'
         if watch_img:
             save_image(torch.from_numpy(image_aug_rgb_255).permute(2,0,1).float() /255., file_path)
         return image_aug_rgb_255
@@ -1518,16 +1519,17 @@ class ImageMotionBlurFrontBack():
 
 class ImageMotionBlurLeftRight():
     def __init__(self, severity, corrput_list=[0.02*i for i in range(1,6)]) -> None:
-        self.severity = severity
-        self.corrput_list = corrput_list
+        # self.severity = severity
+        self.corruption = 0.02 * (1 + severity // 20)
 
-    def __call__(self, image, watch_img=False, file_path='') -> np.array:
+    def __call__(self, image, sample_idx, watch_img=True, file_path='') -> np.array:
         """
             image should be numpy array : H * W * 3
             in uint8 (0~255) and RGB
         """
         img_width = image.shape[1]
-        kernel_size=self.corrput_list[self.severity-1] * img_width * 0.5
+        # kernel_size=self.corrput_list[self.severity-1] * img_width * 0.5
+        kernel_size=self.corruption * img_width * 0.5
         kernel_size = int(kernel_size)
         self.iaa_seq = iaa.Sequential([
             iaa.MotionBlur(k=kernel_size, angle=90),
@@ -1537,6 +1539,7 @@ class ImageMotionBlurLeftRight():
         images = image_rgb_255[None]
         images_aug = self.iaa_seq(images=images)
         image_aug_rgb_255 = images_aug[0]
+        file_path = f'./corruption_valid/{sample_idx}.jpg'
         if watch_img:
             save_image(torch.from_numpy(image_aug_rgb_255).permute(2,0,1).float() /255., file_path)
         return image_aug_rgb_255
@@ -1544,12 +1547,13 @@ class ImageMotionBlurLeftRight():
 
 
 class ImageAddGaussianNoise():
-    def __init__(self, severity, seed) -> None:
+    def __init__(self, severity, seed=2022) -> None:
+        self.severity = 1 + severity // 20
         self.iaa_seq = iaa.Sequential([
-            iaa.imgcorruptlike.GaussianNoise(severity=severity, seed=seed),
+            iaa.imgcorruptlike.GaussianNoise(severity=self.severity, seed=seed),
         ])
 
-    def __call__(self, image, watch_img=False, file_path='') -> np.array:
+    def __call__(self, image, sample_idx, watch_img=True, file_path='') -> np.array:
         """
             image should be numpy array : H * W * 3
             in uint8 (0~255) and RGB
@@ -1558,6 +1562,7 @@ class ImageAddGaussianNoise():
         images = image_rgb_255[None]
         images_aug = self.iaa_seq(images=images)
         image_aug_rgb_255 = images_aug[0]
+        file_path = f'./corruption_valid/{sample_idx}.jpg'
         if watch_img:
             save_image(torch.from_numpy(image_aug_rgb_255).permute(2,0,1).float() /255., file_path)
         return image_aug_rgb_255
@@ -1565,12 +1570,13 @@ class ImageAddGaussianNoise():
 
 
 class ImageAddImpulseNoise():
-    def __init__(self, severity, seed) -> None:
+    def __init__(self, severity, seed=2022) -> None:
+        self.severity = 1 + severity // 20
         self.iaa_seq = iaa.Sequential([
-            iaa.imgcorruptlike.ImpulseNoise(severity=severity, seed=seed),
+            iaa.imgcorruptlike.ImpulseNoise(severity=self.severity, seed=seed),
         ])
 
-    def __call__(self, image, watch_img=False, file_path='') -> np.array:
+    def __call__(self, image, sample_idx, watch_img=True, file_path='') -> np.array:
         """
             image should be numpy array : H * W * 3
             in uint8 (0~255) and RGB
@@ -1580,6 +1586,7 @@ class ImageAddImpulseNoise():
         images = image_rgb_255[None]
         images_aug = self.iaa_seq(images=images)
         image_aug_rgb_255 = images_aug[0]
+        file_path = f'./corruption_valid/{sample_idx}.jpg'
         if watch_img:
             save_image(torch.from_numpy(image_aug_rgb_255).permute(2,0,1).float() /255., file_path)
         return image_aug_rgb_255
@@ -1612,17 +1619,17 @@ class ImageAddUniformNoise():
 
 
 class ImageAddSnow():
-    def __init__(self, severity, seed) -> None:
+    def __init__(self, severity, seed=2022) -> None:
+        self.severity = 1 + round(severity / 20, 2)
         self.iaa_seq = iaa.Sequential([
-            iaa.imgcorruptlike.Snow(severity=severity, seed=seed),
+            iaa.imgcorruptlike.Snow(severity=self.severity, seed=seed),
         ])
 
-    def __call__(self, image, watch_img=False, file_path='') -> np.array:
+    def __call__(self, image, sample_idx, watch_img=True, file_path='') -> np.array:
         """
             image should be numpy array : H * W * 3
             in uint8 (0~255) and RGB
         """
-        
         # add snow
         # iaa requires rgb_255_uint8 img
         images = image[None]
@@ -1635,7 +1642,6 @@ class ImageAddSnow():
             + (1 - gray_ratio) * image_aug
         image_aug = image_aug.astype(np.uint8)
 
-
         # lower the brightness
         image_rgb_255 = image_aug
         img_hsv = cv2.cvtColor(image_rgb_255, cv2.COLOR_RGB2HSV).astype(np.int64)
@@ -1645,7 +1651,7 @@ class ImageAddSnow():
         image_rgb_255 = cv2.cvtColor(img_hsv, cv2.COLOR_HSV2RGB)
         image_aug = image_rgb_255
 
-
+        file_path = f'./corruption_valid/{sample_idx}.jpg'
         if watch_img:
             save_image(torch.from_numpy(image_aug).permute(2,0,1).float() /255., file_path)
         return image_aug
@@ -1653,19 +1659,22 @@ class ImageAddSnow():
 
 
 class ImageAddFog():
-    def __init__(self, severity, seed) -> None:
+    def __init__(self, severity, seed=2022) -> None:
+        self.severity = 1 + round(severity / 20, 2)
         self.iaa_seq = iaa.Sequential([
-            iaa.imgcorruptlike.Fog(severity=severity, seed=seed),
+            iaa.imgcorruptlike.Fog(severity=self.severity, seed=seed),
         ])
-        self.gray_ratio = [
-            0.1,
-            0.2,
-            0.3,
-            0.4,
-            0.5,
-        ][severity-1]
+        # self.gray_ratio = [
+        #     0.1,
+        #     0.2,
+        #     0.3,
+        #     0.4,
+        #     0.5,
+        # ][severity-1]
+        # self.gray_ratio = 0.1 + severity / 200
+        self.gray_ratio = 0.1 + severity * 0.005
 
-    def __call__(self, image, watch_img=False, file_path='') -> np.array:
+    def __call__(self, image, sample_idx, watch_img=True, file_path='') -> np.array:
         """
             image should be numpy array : H * W * 3
             in uint8 (0~255) and RGB
@@ -1682,6 +1691,7 @@ class ImageAddFog():
             + (1 - gray_ratio) * image_aug
         image_aug = image_aug.astype(np.uint8)
 
+        file_path = f'./corruption_valid/{sample_idx}.jpg'
         if watch_img:
             save_image(torch.from_numpy(image_aug).permute(2,0,1).float() /255., file_path)
         return image_aug
@@ -1689,14 +1699,15 @@ class ImageAddFog():
 
 
 class ImageAddRain():
-    def __init__(self, severity, seed) -> None:
-        density = [
-            (0.01,0.06),
-            (0.06,0.10),
-            (0.10,0.15),
-            (0.15,0.20),
-            (0.20,0.25),
-        ][severity-1]
+    def __init__(self, severity, seed=2022) -> None:
+        # density = [
+        #     (0.01,0.06),
+        #     (0.06,0.10),
+        #     (0.10,0.15),
+        #     (0.15,0.20),
+        #     (0.20,0.25),
+        # ][severity-1]
+        density = (round(severity / 400, 2), round(severity / 400 + 0.05, 2))
         self.iaa_seq = iaa.Sequential([
             iaa.RainLayer(
                 density=density,
@@ -1711,7 +1722,7 @@ class ImageAddRain():
             )
         ])
 
-    def __call__(self, image, watch_img=False, file_path='') -> np.array:
+    def __call__(self, image, sample_idx, watch_img=True, file_path='') -> np.array:
         """
             image should be numpy array : H * W * 3
             in uint8 (0~255) and RGB
@@ -1737,11 +1748,10 @@ class ImageAddRain():
         image_rgb_255 = cv2.cvtColor(img_hsv, cv2.COLOR_HSV2RGB)
         image_aug = image_rgb_255
 
-
+        file_path = f'./corruption_valid/{sample_idx}.jpg'
         if watch_img:
             save_image(torch.from_numpy(image_aug).permute(2,0,1).float() /255., file_path)
         return image_aug
-
 
 def _extend_matrix(mat):
     mat = np.concatenate([mat, np.array([[0., 0., 0., 1.]])], axis=0)

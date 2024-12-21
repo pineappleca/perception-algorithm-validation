@@ -10,5 +10,5 @@ CHECKPOINT=$2
 #     $(dirname "$0")/test.py $CONFIG $CHECKPOINT --launcher pytorch ${@:4} --eval bbox
 
 PYTHONPATH="$(dirname $0)/..":$PYTHONPATH \
-python $(dirname "$0")/test.py $CONFIG $CHECKPOINT ${@:4} --eval bbox --corruption '{"light_aug": 0}'
+python $(dirname "$0")/test.py $CONFIG $CHECKPOINT ${@:4} --eval bbox --corruption '{"add_rain": 5, "sensor_gnoise": 5, "camera_blur": 5}'
 

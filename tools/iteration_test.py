@@ -21,13 +21,14 @@ import os
 #     "sun_sim": [60, 80, 100]
 # }
 
-# corruption_params = {
-#     "light_des": list(range(0, 81, 4)),
-# }
-
 corruption_params = {
-    "light_des": [0, 10],
+    # "light_des": list(range(0, 81, 4)),
+    "light_aug": list(range(0, 81, 4)),
 }
+
+# corruption_params = {
+#     "light_des": [0, 10],
+# }
 
 # 配置文件路径
 config_path = "./projects/configs/bevformer/bevformer_base.py"

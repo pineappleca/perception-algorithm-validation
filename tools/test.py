@@ -290,7 +290,15 @@ def main():
             res_eval = dataset.evaluate(outputs, **eval_kwargs)
 
             # 获取触发条件的严重程度
+            camera_blur = corruption_severity_dict.get('camera_blur', -1)
+            light_aug = corruption_severity_dict.get('light_aug', -1)
             light_des = corruption_severity_dict.get('light_des', -1)
+            sensor_gnoise = corruption_severity_dict.get('sensor_gnoise', -1)
+            sensor_inoise = corruption_severity_dict.get('sensor_inoise', -1)
+            add_rain = corruption_severity_dict.get('add_rain', -1)
+            add_snow = corruption_severity_dict.get('add_snow', -1)
+            add_fog = corruption_severity_dict.get('add_fog', -1)
+
 
             # 获取MAP、NDS和MAE的值
             mAP = round(res_eval['pts_bbox_NuScenes/mAP'], 4)
@@ -311,9 +319,11 @@ def main():
                 writer = csv.writer(file)
                 # 如果文件不存在，写入表头
                 if not file_exists:
-                    writer.writerow(["light_des", "mAP", "NDS", "mAE"])
+                    writer.writerow(["camera_blur", "light_aug", "light_des", "sensor_gnoise", "sensor_inoise", 
+                                     "add_rain", "add_snow", "add_fog", "mAP", "NDS", "mAE"])
                 # 写入数据
-                writer.writerow([light_des, mAP, NDS, mAE])
+                writer.writerow([camera_blur, light_aug, light_des, sensor_gnoise, sensor_inoise, 
+                                 add_rain, add_snow, add_fog, mAP, NDS, mAE])
             # print(type(res_eval))
             # 将 res_eval 写入 result_eval.txt 文件
             with open('./result_eval.txt', 'w') as f:

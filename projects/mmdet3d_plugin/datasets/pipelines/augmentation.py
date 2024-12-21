@@ -371,6 +371,7 @@ class GlobalRotScaleTransImage(object):
         return
 
 from .Camera_corruptions import ImageAddSunMono, ImageLightAug, ImageLightDes, ImageBBoxMotionBlurFrontBack, ImageBBoxMotionBlurLeftRight, ImageBBoxMotionBlurFrontBackMono, ImageBBoxMotionBlurLeftRightMono
+from .Camera_corruptions import ImageMotionBlurFrontBack, ImageMotionBlurLeftRight, ImageAddGaussianNoise, ImageAddImpulseNoise, ImageAddSnow, ImageAddFog, ImageAddRain
 
 # 模拟失效触发条件
 @PIPELINES.register_module()
@@ -400,8 +401,6 @@ class CorruptionMethods(object):
         if 'sun_sim' in self.corruption_severity_dict:
             np.random.seed(2022)
             severity = self.corruption_severity_dict['sun_sim']
-            # self.sun_sim = ImagePointAddSun(severity)
-            # self.sun_sim_severity = severity
             self.sun_sim_mono = ImageAddSunMono(severity)
         
         if 'light_aug' in self.corruption_severity_dict:
@@ -431,6 +430,39 @@ class CorruptionMethods(object):
                 severity=severity,
                 corrput_list=[0.02 * i for i in range(1, 6)],
             )
+        
+        if 'camera_blur' in self.corruption_severity_dict:
+            severity = self.corruption_severity_dict['camera_blur']
+            self.camera_blur_fb = ImageMotionBlurFrontBack(severity=severity)
+            self.camera_blur_lr = ImageMotionBlurLeftRight(severity=severity)
+        
+        # 高斯噪声
+        if 'sensor_gnoise' in self.corruption_severity_dict:
+            severity = self.corruption_severity_dict['sensor_gnoise']
+            self.sensor_gnoise = ImageAddGaussianNoise(severity=severity)
+        
+        # 脉冲噪声
+        if 'sensor_inoise' in self.corruption_severity_dict:
+            severity = self.corruption_severity_dict['sensor_inoise']
+            self.sensor_impulse = ImageAddImpulseNoise(severity=severity)
+        
+        # 降雨
+        if 'add_rain' in self.corruption_severity_dict:
+            severity = self.corruption_severity_dict['add_rain']
+            self.add_rain = ImageAddRain(severity=severity)
+        
+        # 降雪
+        if 'add_snow' in self.corruption_severity_dict:
+            severity = self.corruption_severity_dict['add_snow']
+            self.add_snow = ImageAddSnow(severity=severity)
+        
+        # 浓雾
+        if 'add_fog' in self.corruption_severity_dict:
+            severity = self.corruption_severity_dict['add_fog']
+            self.add_fog = ImageAddFog(severity=severity)
+        # TODO:炫光
+        # TODO:时空不对齐
+        # TODO:运动补偿
             
             
 
@@ -452,6 +484,25 @@ class CorruptionMethods(object):
         # 通道转换：BGR->RGB
         image_aug_rgb = [image[:, :, [2, 1, 0]] for image in img_bgr_255_np_uint8]
         # cv2.imwrite('/home/step/data/Documents/BEVFormer/res_validate.jpg', image_aug_rgb[0])
+        
+        # 图像模糊
+        if 'camera_blur' in self.corruption_severity_dict:
+            sample_idx = results['sample_idx']
+            for i in range(len(image_aug_rgb)):
+                image_camera_blur_i_rgb = image_aug_rgb[i]
+                # 前后
+                if i % 3 == 0:
+                    image_camera_blur_i_rgb = self.camera_blur_fb(
+                        image=image_camera_blur_i_rgb,
+                        sample_idx=sample_idx
+                    )
+                # 左右
+                else:
+                    image_camera_blur_i_rgb = self.camera_blur_lr(
+                        image=image_camera_blur_i_rgb,
+                        sample_idx=sample_idx
+                    )
+                image_aug_rgb[i] = image_camera_blur_i_rgb
         
         # 运动模糊
         # TODO:修改运动模糊等级，重写目标模糊函数
@@ -556,7 +607,62 @@ class CorruptionMethods(object):
                 image_light_aug_i_rgb = image_light_aug_i_bgr[:, :, [2, 1, 0]]
                 image_aug_rgb[i] = image_light_aug_i_rgb
         
-        # TODO:相机整体模糊(对所有摄像头生效)
+        # 高斯噪声
+        if 'sensor_gnoise' in self.corruption_severity_dict:
+            sample_idx = results['sample_idx']
+            for i in range(len(image_aug_rgb)):
+                # 设置为uint类型
+                image_sensor_noise_i_rgb = image_aug_rgb[i].astype(np.uint8)
+                # print(image_sensor_noise_i_rgb.dtype)
+                image_sensor_noise_i_rgb = self.sensor_gnoise(
+                    image=image_sensor_noise_i_rgb,
+                    sample_idx=sample_idx
+                )
+                image_aug_rgb[i] = image_sensor_noise_i_rgb
+        
+        # 脉冲噪声
+        if 'sensor_inoise' in self.corruption_severity_dict:
+            sample_idx = results['sample_idx']
+            for i in range(len(image_aug_rgb)):
+                image_sensor_impulse_i_rgb = image_aug_rgb[i].astype(np.uint8)
+                image_sensor_impulse_i_rgb = self.sensor_impulse(
+                    image=image_sensor_impulse_i_rgb,
+                    sample_idx=sample_idx
+                )
+                image_aug_rgb[i] = image_sensor_impulse_i_rgb
+        
+        # 降雨
+        if 'add_rain' in self.corruption_severity_dict:
+            sample_idx = results['sample_idx']
+            for i in range(len(image_aug_rgb)):
+                image_add_rain_i_rgb = image_aug_rgb[i]
+                image_add_rain_i_rgb = self.add_rain(
+                    image=image_add_rain_i_rgb,
+                    sample_idx=sample_idx
+                )
+                image_aug_rgb[i] = image_add_rain_i_rgb
+        
+        # 降雪
+        if 'add_snow' in self.corruption_severity_dict:
+            sample_idx = results['sample_idx']
+            for i in range(len(image_aug_rgb)):
+                image_add_snow_i_rgb = image_aug_rgb[i].astype(np.uint8)
+                image_add_snow_i_rgb = self.add_snow(
+                    image=image_add_snow_i_rgb,
+                    sample_idx=sample_idx
+                )
+                image_aug_rgb[i] = image_add_snow_i_rgb
+        
+        # 浓雾
+        if 'add_fog' in self.corruption_severity_dict:
+            sample_idx = results['sample_idx']
+            for i in range(len(image_aug_rgb)):
+                image_add_fog_i_rgb = image_aug_rgb[i].astype(np.uint8)
+                image_add_fog_i_rgb = self.add_fog(
+                    image=image_add_fog_i_rgb,
+                    sample_idx=sample_idx
+                )
+                image_aug_rgb[i] = image_add_fog_i_rgb
         
         # 完成多个触发条件叠加操作
         # 通道转换：RGB->BGR
@@ -566,231 +672,4 @@ class CorruptionMethods(object):
         # results['img'] = img_bgr_255_np_uint8
         results['img'] = image_aug_bgr
         return results
-
-            # 尝试去掉雷达数据
-            # print(results.keys())
-            # raise AssertionError('stop here')
-
-            # if 'points' not in results:
-            #     use_mono_dataset = True
-            # elif 'lidar2img' in results:
-            #     lidar2img = results['lidar2img']  # nus: list / kitti: nparray
-            #     use_mono_dataset = False
-
-            # if 'lidar2img' in results:
-            #     lidar2img = results['lidar2img']  # nus: list / kitti: nparray
-            #     use_mono_dataset = True
-            # if 'cam_intrinsic' in results['img_info']:
-            #     cam2img = results['img_info']['cam_intrinsic']  # for xxx-mono dataset
-            #     import numpy as np
-            #     cam2img = np.array(cam2img)
-            #     use_mono_dataset = True
-            # else:
-            #     raise AssertionError('no lidar2img or cam_intrinsic found!')
-
-            # if not use_mono_dataset:
-            #     points_tensor = results['points'].tensor
-            #     # different part of nus and kitti
-            #     if type(img_bgr_255_np_uint8) == list and len(img_bgr_255_np_uint8) == 6:
-            #         # nus dataset
-            #         # only one sun
-            #         '''
-            #         nuscenes:
-            #         0    CAM_FRONT,
-            #         1    CAM_FRONT_RIGHT,
-            #         2    CAM_FRONT_LEFT,
-            #         3    CAM_BACK,
-            #         4    CAM_BACK_LEFT,
-            #         5    CAM_BACK_RIGHT
-            #         '''
-            #         img_rgb_255_np_uint8_0 = img_bgr_255_np_uint8[0][:, :, [2, 1, 0]]
-            #         lidar2img_0 = lidar2img[0]
-            #         image_aug_rgb_0, points_aug = self.sun_sim(
-            #             image=img_rgb_255_np_uint8_0,
-            #             points=points_tensor,
-            #             lidar2img=lidar2img_0,
-            #         )
-            #         image_aug_bgr_0 = image_aug_rgb_0[:, :, [2, 1, 0]]
-            #         img_bgr_255_np_uint8[0] = image_aug_bgr_0
-            #         results['img'] = img_bgr_255_np_uint8
-            #         results['points'].tensor = points_aug
-
-            #     elif type(img_bgr_255_np_uint8) == list and len(img_bgr_255_np_uint8) == 5:
-            #         # waymo dataset
-            #         # only one sun
-            #         '''
-            #         nuscenes:
-            #         0    CAM_FRONT,
-            #         1    CAM_FRONT_RIGHT,
-            #         2    CAM_FRONT_LEFT,
-            #         3    CAM_BACK,
-            #         4    CAM_BACK_LEFT,
-            #         5    CAM_BACK_RIGHT
-            #         '''
-            #         img_rgb_255_np_uint8_0 = img_bgr_255_np_uint8[0][:, :, [2, 1, 0]]
-            #         lidar2img_0 = lidar2img[0]
-            #         image_aug_rgb_0, points_aug = self.sun_sim(
-            #             image=img_rgb_255_np_uint8_0,
-            #             points=points_tensor,
-            #             lidar2img=lidar2img_0,
-            #         )
-            #         image_aug_bgr_0 = image_aug_rgb_0[:, :, [2, 1, 0]]
-            #         img_bgr_255_np_uint8[0] = image_aug_bgr_0
-            #         results['img'] = img_bgr_255_np_uint8
-            #         results['points'].tensor = points_aug
-
-            #     else:
-            #         # kitti dataset
-            #         img_rgb_255_np_uint8 = img_bgr_255_np_uint8[:, :, [2, 1, 0]]
-            #         image_aug_rgb, points_aug = self.sun_sim(
-            #             image=img_rgb_255_np_uint8,
-            #             points=points_tensor,
-            #             lidar2img=lidar2img,
-            #         )
-            #         image_aug_bgr = image_aug_rgb[:, :, [2, 1, 0]]
-            #         results['img'] = image_aug_bgr
-            #         results['points'].tensor = points_aug
-            # else:
-            #     # mono dataset of nus and kitti only one image
-            #     # 只对前置摄像头进行调整
-            #     img_rgb_255_np_uint8_0 = img_bgr_255_np_uint8[0][:, :, [2, 1, 0]]
-            #     image_aug_rgb = self.sun_sim_mono(
-            #         image=img_rgb_255_np_uint8_0,
-            #     )
-            #     image_aug_bgr_0 = image_aug_rgb[:, :, [2, 1, 0]]
-            #     img_bgr_255_np_uint8[0] = image_aug_bgr_0
-            #     print(type(img_bgr_255_np_uint8))
-            #     print(np.array(img_bgr_255_np_uint8).shape)
-            #     results['img'] = img_bgr_255_np_uint8
-
-        # if 'object_motion_sim' in self.corruption_severity_dict:
-        #     img_bgr_255_np_uint8 = results['img']
-        #     # points_tensor = results['points'].tensor
-        #     if 'lidar2img' in results:
-        #         lidar2img = results['lidar2img']  
-        #         use_mono_dataset = False
-        #     elif 'cam_intrinsic' in results['img_info']:
-        #         cam2img = results['img_info']['cam_intrinsic']  
-        #         import numpy as np
-        #         cam2img = np.array(cam2img)
-        #         use_mono_dataset = True
-        #     else:
-        #         raise AssertionError('no lidar2img or cam_intrinsic found!')
-            
-        #     bboxes_corners = results['gt_bboxes_3d'].corners
-        #     bboxes_centers = results['gt_bboxes_3d'].center
-
-
-        # if type(bboxes_corners) == int:
-        #     print(0)
-
-        # if type(bboxes_corners) != int:
-
-        #     if not use_mono_dataset:
-        #         if type(img_bgr_255_np_uint8) == list and len(img_bgr_255_np_uint8) == 6:
-        #             '''
-        #             nuscenes:
-        #             0    CAM_FRONT,
-        #             1    CAM_FRONT_RIGHT,
-        #             2    CAM_FRONT_LEFT,
-        #             3    CAM_BACK,
-        #             4    CAM_BACK_LEFT,
-        #             5    CAM_BACK_RIGHT
-        #             '''
-        #             image_aug_bgr = []
-        #             for i in range(6):
-        #                 img_rgb_255_np_uint8_i = img_bgr_255_np_uint8[i][:, :, [2, 1, 0]]
-        #                 lidar2img_i = lidar2img[i]
-
-        #                 if i % 3 == 0:
-        #                     image_aug_rgb_i = self.object_motion_sim_frontback(
-        #                         image=img_rgb_255_np_uint8_i,
-        #                         bboxes_centers=bboxes_centers,
-        #                         bboxes_corners=bboxes_corners,
-        #                         lidar2img=lidar2img_i,
-        #                         # watch_img=True,
-        #                         # file_path='2.jpg'
-        #                     )
-        #                 else:
-        #                     image_aug_rgb_i = self.object_motion_sim_leftright(
-        #                         image=img_rgb_255_np_uint8_i,
-        #                         bboxes_centers=bboxes_centers,
-        #                         bboxes_corners=bboxes_corners,
-        #                         lidar2img=lidar2img_i,
-        #                         # watch_img=True,
-        #                         # file_path='2.jpg'
-        #                     )
-        #                     # print('object_motion_sim_leftright:', time_inter)
-        #                 image_aug_bgr_i = image_aug_rgb_i[:, :, [2, 1, 0]]
-        #                 image_aug_bgr.append(image_aug_bgr_i)
-        #             results['img'] = image_aug_bgr
-
-        #         elif type(img_bgr_255_np_uint8) == list and len(img_bgr_255_np_uint8) == 5:
-        #             '''
-        #             nuscenes:
-        #             0    CAM_FRONT,
-        #             1    CAM_FRONT_RIGHT,
-        #             2    CAM_FRONT_LEFT,
-        #             3    CAM_BACK,
-        #             4    CAM_BACK_LEFT,
-        #             5    CAM_BACK_RIGHT
-        #             '''
-        #             image_aug_bgr = []
-        #             for i in range(5):
-        #                 img_rgb_255_np_uint8_i = img_bgr_255_np_uint8[i][:, :, [2, 1, 0]]
-        #                 lidar2img_i = lidar2img[i]
-
-        #                 # if i % 3 == 0:
-        #                 if i == 0:
-        #                     image_aug_rgb_i = self.object_motion_sim_frontback(
-        #                         image=img_rgb_255_np_uint8_i,
-        #                         bboxes_centers=bboxes_centers,
-        #                         bboxes_corners=bboxes_corners,
-        #                         lidar2img=lidar2img_i,
-        #                         # watch_img=True,
-        #                         # file_path='2.jpg'
-        #                     )
-        #                 else:
-        #                     image_aug_rgb_i = self.object_motion_sim_leftright(
-        #                         image=img_rgb_255_np_uint8_i,
-        #                         bboxes_centers=bboxes_centers,
-        #                         bboxes_corners=bboxes_corners,
-        #                         lidar2img=lidar2img_i,
-        #                         # watch_img=True,
-        #                         # file_path='2.jpg'
-        #                     )
-        #                     # print('object_motion_sim_leftright:', time_inter)
-        #                 image_aug_bgr_i = image_aug_rgb_i[:, :, [2, 1, 0]]
-        #                 image_aug_bgr.append(image_aug_bgr_i)
-        #             results['img'] = image_aug_bgr
-
-        #         else:
-        #             img_rgb_255_np_uint8 = img_bgr_255_np_uint8[:, :, [2, 1, 0]]
-        #             # points_tensor = results['points'].tensor
-        #             lidar2img = results['lidar2img']
-        #             bboxes_corners = results['gt_bboxes_3d'].corners
-        #             bboxes_centers = results['gt_bboxes_3d'].center
-
-        #             image_aug_rgb = self.object_motion_sim_frontback(
-        #                 image=img_rgb_255_np_uint8,
-        #                 bboxes_centers=bboxes_centers,
-        #                 bboxes_corners=bboxes_corners,
-        #                 lidar2img=lidar2img,
-        #                 # watch_img=True,
-        #                 # file_path='2.jpg'
-        #             )
-        #             image_aug_bgr = image_aug_rgb[:, :, [2, 1, 0]]
-        #             results['img'] = image_aug_bgr
-
-        #     else:
-        #         img_rgb_255_np_uint8 = img_bgr_255_np_uint8[:, :, [2, 1, 0]]
-        #         image_aug_rgb = self.object_motion_sim_frontback_mono(
-        #             image=img_rgb_255_np_uint8,
-        #             bboxes_centers=bboxes_centers,
-        #             bboxes_corners=bboxes_corners,
-        #             cam2img=cam2img,
-        #             # watch_img=True,
-        #             # file_path='2.jpg'
-        #         )
-        #         image_aug_bgr = image_aug_rgb[:, :, [2, 1, 0]]
-        #         results['img'] = image_aug_bgr
+    
