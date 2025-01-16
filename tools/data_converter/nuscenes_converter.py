@@ -56,7 +56,8 @@ def create_nuscenes_infos(root_path,
     # 训练集和测试集仅取前五个场景
     if version == 'v1.0-trainval':
         train_scenes = splits.train[:5]
-        val_scenes = splits.val[:5]
+        # val_scenes = splits.val[:5]
+        val_scenes = ['scene-0557']
     elif version == 'v1.0-test':
         train_scenes = splits.test
         val_scenes = []

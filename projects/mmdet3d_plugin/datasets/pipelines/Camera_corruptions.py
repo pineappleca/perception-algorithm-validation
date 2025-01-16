@@ -1465,7 +1465,7 @@ class ImageBBoxMotionBlurLeftRightMono():
 class ImageMotionBlurFrontBack():
     def __init__(self, severity, corrput_list=[0.02*i for i in range(1,6)]) -> None:
         # self.severity = severity
-        self.corruption = 0.02 * (1 + severity // 20)
+        self.corruption = 0.02 * (1 + severity / 20)
 
     def __call__(self, image, sample_idx, watch_img=True, file_path='') -> np.array:
         """
@@ -1548,7 +1548,7 @@ class ImageMotionBlurLeftRight():
 
 class ImageAddGaussianNoise():
     def __init__(self, severity, seed=2022) -> None:
-        self.severity = 1 + severity // 20
+        self.severity = severity
         self.iaa_seq = iaa.Sequential([
             iaa.imgcorruptlike.GaussianNoise(severity=self.severity, seed=seed),
         ])
@@ -1571,7 +1571,7 @@ class ImageAddGaussianNoise():
 
 class ImageAddImpulseNoise():
     def __init__(self, severity, seed=2022) -> None:
-        self.severity = 1 + severity // 20
+        self.severity = severity
         self.iaa_seq = iaa.Sequential([
             iaa.imgcorruptlike.ImpulseNoise(severity=self.severity, seed=seed),
         ])

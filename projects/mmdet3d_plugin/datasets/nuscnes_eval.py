@@ -306,7 +306,8 @@ def load_gt(nusc: NuScenes, eval_split: str, box_cls, verbose: bool = False):
     for sample_token in sample_tokens_all:
         scene_token = nusc.get('sample', sample_token)['scene_token']
         scene_record = nusc.get('scene', scene_token)
-        if scene_record['name'] in splits[eval_split][:5]:
+        # if scene_record['name'] in splits[eval_split][:5]:
+        if scene_record['name'] in ['scene-0557']:
             sample_tokens.append(sample_token)
 
     all_annotations = EvalBoxes()

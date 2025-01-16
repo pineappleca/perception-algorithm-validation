@@ -24,7 +24,8 @@ nusc = NuScenes(version='v1.0-trainval', dataroot='./data/nuscenes', verbose=Tru
 val_scenes = create_splits_scenes()['val']
 
 # 选择你感兴趣的几个场景
-selected_scenes = val_scenes[:5]  # 例如，只选择前5个场景
+# selected_scenes = val_scenes[:5]  # 例如，只选择前5个场景
+selected_scenes = ['scene-0557']
 
 # 提取选定场景的信息
 val_infos = []
@@ -42,7 +43,10 @@ for scene in nusc.scene:
             }
             val_infos.append(sample_data)
             sample_token = sample['next']
+            sample_token = sample['next']
 
 # 将信息保存到 pkl 文件
 with open('./data/nuscenes/partial_val.pkl', 'wb') as f:
     pickle.dump(val_infos, f)
+
+print(f"Save {len(val_infos)} samples to partial_val.pkl")

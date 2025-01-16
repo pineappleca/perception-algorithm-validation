@@ -105,6 +105,12 @@ def parse_args():
         type=str,
         help='JSON string for corruption severity dictionary')
     
+    # 设置是否为单一触发条件
+    parser.add_argument(
+        '--single',
+        action='store_false',
+        help='Whether to use single corruption condition')
+    
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
@@ -302,6 +308,7 @@ def main():
 
             # 获取MAP、NDS和MAE的值
             mAP = round(res_eval['pts_bbox_NuScenes/mAP'], 4)
+            mAP_car = round(res_eval['pts_bbox_NuScenes/car_AP_dist_2.0'], 4)
             NDS = round(res_eval['pts_bbox_NuScenes/NDS'], 4)
             mae_array = np.array([res_eval['pts_bbox_NuScenes/mATE'],
                                   res_eval['pts_bbox_NuScenes/mASE'],
@@ -311,7 +318,10 @@ def main():
             mAE = round(np.mean(mae_array), 4)
             
             # 将多个指标写入 result_eval.csv 文件
-            csv_file = './result_eval.csv'
+            if args.single:
+                csv_file = f'./{list(corruption_severity_dict.keys())[0]}_result_eval_single.csv'
+            else:
+                csv_file = './result_eval.csv'
             # 检查文件是否存在
             file_exists = os.path.isfile(csv_file)
             # 打开文件，追加模式
@@ -321,18 +331,20 @@ def main():
                 if not file_exists:
                     writer.writerow(["camera_blur", "light_aug", "light_des", "sensor_gnoise", "sensor_inoise", 
                                      "add_rain", "add_snow", "add_fog", "mAP", "NDS", "mAE"])
-                # 写入数据
+                # 将mAP写入数据
                 writer.writerow([camera_blur, light_aug, light_des, sensor_gnoise, sensor_inoise, 
                                  add_rain, add_snow, add_fog, mAP, NDS, mAE])
             # print(type(res_eval))
             # 将 res_eval 写入 result_eval.txt 文件
             with open('./result_eval.txt', 'w') as f:
                 json.dump(res_eval, f, indent=4)
+            return mAP_car
 
 
 
 if __name__ == '__main__':
     start_time = time.time()
-    main()
+    mAP_car = main()
     end_time = time.time()
+    print(mAP_car)
     print(f"Time cost: {end_time - start_time}s")
