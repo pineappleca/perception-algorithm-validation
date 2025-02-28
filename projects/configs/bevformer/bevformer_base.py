@@ -178,8 +178,9 @@ train_pipeline = [
 
 test_pipeline = [
     dict(type='LoadMultiViewImageFromFiles', to_float32=True),
+    # dict(type='CustomCollect3D', keys=['gt_bboxes_3d', 'gt_labels_3d', 'img']),
     # 加载3d标注信息
-    # dict(type='LoadAnnotations3D', with_bbox_3d=True, with_label_3d=True, with_attr_label=False),
+    dict(type='LoadAnnotations3D', with_bbox_3d=True, with_label_3d=False, with_attr_label=False),
     dict(
         type='CorruptionMethods',
         corruption_severity_dict=

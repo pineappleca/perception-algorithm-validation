@@ -297,10 +297,13 @@ def main():
 
             # 获取触发条件的严重程度
             camera_blur = corruption_severity_dict.get('camera_blur', -1)
+            object_motion_sim = corruption_severity_dict.get('object_motion_sim', -1)
+            sun_sim = corruption_severity_dict.get('sun_sim', -1)
             light_aug = corruption_severity_dict.get('light_aug', -1)
             light_des = corruption_severity_dict.get('light_des', -1)
             sensor_gnoise = corruption_severity_dict.get('sensor_gnoise', -1)
             sensor_inoise = corruption_severity_dict.get('sensor_inoise', -1)
+            sensor_snoise = corruption_severity_dict.get('sensor_snoise', -1)
             add_rain = corruption_severity_dict.get('add_rain', -1)
             add_snow = corruption_severity_dict.get('add_snow', -1)
             add_fog = corruption_severity_dict.get('add_fog', -1)
@@ -309,6 +312,9 @@ def main():
             # 获取MAP、NDS和MAE的值
             mAP = round(res_eval['pts_bbox_NuScenes/mAP'], 4)
             mAP_car = round(res_eval['pts_bbox_NuScenes/car_AP_dist_2.0'], 4)
+            mAP_car_pedes_array = np.array([res_eval['pts_bbox_NuScenes/pedestrian_AP_dist_2.0'],
+                                             res_eval['pts_bbox_NuScenes/pedestrian_AP_dist_2.0']])
+            mAP_car_pedes = np.mean(mAP_car_pedes_array)
             NDS = round(res_eval['pts_bbox_NuScenes/NDS'], 4)
             mae_array = np.array([res_eval['pts_bbox_NuScenes/mATE'],
                                   res_eval['pts_bbox_NuScenes/mASE'],
@@ -316,6 +322,7 @@ def main():
                                   res_eval['pts_bbox_NuScenes/mAVE'],
                                   res_eval['pts_bbox_NuScenes/mAAE']])
             mAE = round(np.mean(mae_array), 4)
+            print(f"mAP_car_pedes: {mAP_car_pedes}, NDS: {NDS}, mAE: {mAE}")
             
             # 将多个指标写入 result_eval.csv 文件
             if args.single:
@@ -328,12 +335,13 @@ def main():
             with open(csv_file, mode='a', newline='') as file:
                 writer = csv.writer(file)
                 # 如果文件不存在，写入表头
+                # NOTE: 此处的mAP只计算car和pedestrain
                 if not file_exists:
-                    writer.writerow(["camera_blur", "light_aug", "light_des", "sensor_gnoise", "sensor_inoise", 
-                                     "add_rain", "add_snow", "add_fog", "mAP", "NDS", "mAE"])
+                    writer.writerow(["camera_blur", "object_motion_sim", "sun_sim", "light_aug", "light_des", "sensor_gnoise", "sensor_inoise", 
+                                     "sensor_snoise", "add_rain", "add_snow", "add_fog", "mAP", "NDS", "mAE"])
                 # 将mAP写入数据
-                writer.writerow([camera_blur, light_aug, light_des, sensor_gnoise, sensor_inoise, 
-                                 add_rain, add_snow, add_fog, mAP, NDS, mAE])
+                writer.writerow([camera_blur, object_motion_sim, sun_sim, light_aug, light_des, sensor_gnoise, sensor_inoise, 
+                                 sensor_snoise, add_rain, add_snow, add_fog, mAP_car_pedes, NDS, mAE])
             # print(type(res_eval))
             # 将 res_eval 写入 result_eval.txt 文件
             with open('./result_eval.txt', 'w') as f:

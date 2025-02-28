@@ -1,8 +1,12 @@
 ./tools/dist_test.sh ./projects/configs/bevformer/bevformer_base.py ./ckpts/bevformer_r101_dcn_24ep.pth 1
 
-python test.py ./projects/configs/bevformer/bevformer_base.py ./ckpts/bevformer_r101_dcn_24ep.pth --launcher pytorch --eval bbox --corruption '{"light_des": 20}'
+python ./tools/test.py ./projects/configs/bevformer/bevformer_base.py ./ckpts/bevformer_r101_dcn_24ep.pth --launcher pytorch --eval bbox --corruption '{"light_des": 20}'
 
 # 自定义数据集
 # 先运行creat_customed_val.py生成.pkl文件
 python tools/create_data.py nuscenes --root-path ./data/nuscenes --out-dir ./data/nuscenes --extra-tag nuscenes --version v1.0 --canbus ./data
 # 修改nuscnes_eval.py文件中的load_gt函数
+
+python ./tools/iteration_test.py
+
+python ./test.py ./projects/configs/bevformer/bevformer_base.py ./ckpts/bevformer_r101_dcn_24ep.pth --launcher pytorch --eval bbox --corruption '{"object_motion_sim": 5}'

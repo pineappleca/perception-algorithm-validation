@@ -371,7 +371,7 @@ class GlobalRotScaleTransImage(object):
         return
 
 from .Camera_corruptions import ImageAddSunMono, ImageLightAug, ImageLightDes, ImageBBoxMotionBlurFrontBack, ImageBBoxMotionBlurLeftRight, ImageBBoxMotionBlurFrontBackMono, ImageBBoxMotionBlurLeftRightMono
-from .Camera_corruptions import ImageMotionBlurFrontBack, ImageMotionBlurLeftRight, ImageAddGaussianNoise, ImageAddImpulseNoise, ImageAddSnow, ImageAddFog, ImageAddRain
+from .Camera_corruptions import ImageMotionBlurFrontBack, ImageMotionBlurLeftRight, ImageAddGaussianNoise, ImageAddImpulseNoise, ImageAddShotNoise, ImageAddSnow, ImageAddFog, ImageAddRain
 
 # 模拟失效触发条件
 @PIPELINES.register_module()
@@ -411,26 +411,24 @@ class CorruptionMethods(object):
             severity = self.corruption_severity_dict['light_des']
             self.light_des = ImageLightDes(severity)
         
+        # 目标模糊
         if 'object_motion_sim' in self.corruption_severity_dict:
             # for kitti and nus
             severity = self.corruption_severity_dict['object_motion_sim']
             self.object_motion_sim_frontback = ImageBBoxMotionBlurFrontBack(
-                severity=severity,
-                corrput_list=[0.02 * i for i in range(1, 6)],
+                severity=severity
             )
             self.object_motion_sim_leftright = ImageBBoxMotionBlurLeftRight(
-                severity=severity,
-                corrput_list=[0.02 * i for i in range(1, 6)],
+                severity=severity
             )
-            self.object_motion_sim_frontback_mono = ImageBBoxMotionBlurFrontBackMono(
-                severity=severity,
-                corrput_list=[0.02 * i for i in range(1, 6)],
-            )
-            self.object_motion_sim_leftright_mono = ImageBBoxMotionBlurLeftRightMono(
-                severity=severity,
-                corrput_list=[0.02 * i for i in range(1, 6)],
-            )
+            # self.object_motion_sim_frontback_mono = ImageBBoxMotionBlurFrontBackMono(
+            #     severity=severity
+            # )
+            # self.object_motion_sim_leftright_mono = ImageBBoxMotionBlurLeftRightMono(
+            #     severity=severity
+            # )
         
+        # 图像模糊
         if 'camera_blur' in self.corruption_severity_dict:
             severity = self.corruption_severity_dict['camera_blur']
             self.camera_blur_fb = ImageMotionBlurFrontBack(severity=severity)
@@ -445,6 +443,11 @@ class CorruptionMethods(object):
         if 'sensor_inoise' in self.corruption_severity_dict:
             severity = self.corruption_severity_dict['sensor_inoise']
             self.sensor_impulse = ImageAddImpulseNoise(severity=severity)
+        
+        # 泊松噪声
+        if 'sensor_snoise' in self.corruption_severity_dict:
+            severity = self.corruption_severity_dict['sensor_snoise']
+            self.sensor_snoise = ImageAddShotNoise(severity=severity)
         
         # 降雨
         if 'add_rain' in self.corruption_severity_dict:
@@ -464,8 +467,7 @@ class CorruptionMethods(object):
         # TODO:时空不对齐
         # TODO:运动补偿
             
-            
-
+    
     def __call__(self, results):
         """Call function to augment common corruptions.
         """
@@ -504,12 +506,16 @@ class CorruptionMethods(object):
                     )
                 image_aug_rgb[i] = image_camera_blur_i_rgb
         
-        # 运动模糊
-        # TODO:修改运动模糊等级，重写目标模糊函数
+        # 目标模糊
         if 'object_motion_sim' in self.corruption_severity_dict:
+            sample_idx = results['sample_idx']
+            # print(results.keys())
             # 获取相机内参
-            if 'cam_intrinsic' in results:
-                cam2img = results['cam_intrinsic']
+            # if 'cam_intrinsic' in results:
+            #     cam2img = results['cam_intrinsic']
+            # 获取雷达到图像的变换矩阵
+            lidar2img = results['lidar2img']
+            # print(torch.tensor(cam2img).float().shape)
         
             # 获取检测框
             # 当检测框为形状为[0, 9]时，表示没有检测到目标
@@ -530,45 +536,33 @@ class CorruptionMethods(object):
                         5    CAM_BACK_RIGHT
                     '''
                     # image_aug_bgr = []
-                    for i in range(4):
+                    for i in range(len(image_aug_rgb)):
                         # img_rgb_255_np_uint8_i = img_bgr_255_np_uint8[i][:, :, [2, 1, 0]]
                         img_rgb_255_np_uint8_i = image_aug_rgb[i]
-                        # 生成[0, 1000]的随机整数
-                        rand_filename = np.random.randint(0, 1000)
+
+                        # 前后相机
                         if i % 3 == 0:
-                            image_aug_rgb_i = self.object_motion_sim_frontback_mono(
+                            image_aug_rgb_i = self.object_motion_sim_frontback(
                                 image=img_rgb_255_np_uint8_i,
                                 bboxes_centers=bboxes_centers,
                                 bboxes_corners=bboxes_corners,
-                                cam2img=torch.tensor(cam2img[i]).float(),
-                                # cam2img=np.array(cam2img[i]),
+                                lidar2img=torch.tensor(lidar2img[i]).float(),
                                 watch_img=True,
-                                file_path=f'./blur_plot/{rand_filename}.jpg'
+                                file_path=f'./corruption_valid/{sample_idx}_{i}.jpg'
                             )
                         else:
-                            image_aug_rgb_i = self.object_motion_sim_leftright_mono(
+                            image_aug_rgb_i = self.object_motion_sim_leftright(
                                 image=img_rgb_255_np_uint8_i,
                                 bboxes_centers=bboxes_centers,
                                 bboxes_corners=bboxes_corners,
-                                cam2img=torch.tensor(cam2img[i]).float(),
+                                lidar2img=torch.tensor(lidar2img[i]).float(),
                                 watch_img=True,
-                                file_path=f'./blur_plot/{rand_filename}.jpg'
+                                file_path=f'./corruption_valid/{sample_idx}.jpg'
                             )
                             # print('object_motion_sim_leftright:', time_inter)
                         # image_aug_bgr_i = image_aug_rgb_i[:, :, [2, 1, 0]]
                         # image_aug_bgr.append(image_aug_bgr_i)
                         image_aug_rgb[i] = image_aug_rgb_i
-                    # img_rgb_255_np_uint8 = img_bgr_255_np_uint8[:, :, [2, 1, 0]]
-                    # image_aug_rgb = self.object_motion_sim_frontback_mono(
-                    #     image=img_rgb_255_np_uint8,
-                    #     bboxes_centers=bboxes_centers,
-                    #     bboxes_corners=bboxes_corners,
-                    #     cam2img=cam2img,
-                    #     # watch_img=True,
-                    #     # file_path='2.jpg'
-                    # )
-                    # image_aug_bgr = image_aug_rgb[:, :, [2, 1, 0]]
-                    # results['img'] = image_aug_bgr
             
         
         # 局部光斑(仅对前置摄像头生效)
@@ -631,6 +625,17 @@ class CorruptionMethods(object):
                 )
                 image_aug_rgb[i] = image_sensor_impulse_i_rgb
         
+        # 泊松噪声
+        if 'sensor_snoise' in self.corruption_severity_dict:
+            sample_idx = results['sample_idx']
+            for i in range(len(image_aug_rgb)):
+                image_sensor_snoise_i_rgb = image_aug_rgb[i].astype(np.uint8)
+                image_sensor_snoise_i_rgb = self.sensor_snoise(
+                    image=image_sensor_snoise_i_rgb,
+                    sample_idx=sample_idx
+                )
+                image_aug_rgb[i] = image_sensor_snoise_i_rgb
+        
         # 降雨
         if 'add_rain' in self.corruption_severity_dict:
             sample_idx = results['sample_idx']
@@ -663,6 +668,21 @@ class CorruptionMethods(object):
                     sample_idx=sample_idx
                 )
                 image_aug_rgb[i] = image_add_fog_i_rgb
+        
+        # lambda型失效
+        if 'lambda_mode' in self.corruption_severity_dict:
+            for i in range(len(image_aug_rgb)):
+                if i == 0 or i == 4 or i == 5:
+                    image_aug_rgb[i] = np.zeros_like(image_aug_rgb[i])
+                # 保存图像
+                # cv2.imwrite(f'./result_valid/{results["sample_idx"]}_lambda_mode_{i}.jpg', image_aug_rgb[i])
+        
+        # Y型失效
+        if 'Y_mode' in self.corruption_severity_dict:
+            for i in range(len(image_aug_rgb)):
+                if i == 1 or i == 2 or i == 3:
+                    image_aug_rgb[i] = np.zeros_like(image_aug_rgb[i])
+
         
         # 完成多个触发条件叠加操作
         # 通道转换：RGB->BGR

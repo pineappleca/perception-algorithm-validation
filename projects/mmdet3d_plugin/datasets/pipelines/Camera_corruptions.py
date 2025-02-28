@@ -224,19 +224,21 @@ class ImageAddSunMono():
         #     image_bgr[:, :, i][mask] = cv2.convertScaleAbs(image_bgr[:, :, i][mask], alpha=1.5, beta=0).flatten()
         # image_rgb = image_bgr[:, :, [2, 1, 0]]
 
-        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-        h, s, v = cv2.split(hsv)
+
+        # # 通过hsv区分亮部和暗部，并适当提升亮部光照
+        # hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        # h, s, v = cv2.split(hsv)
         
-        # 识别图像的亮部和暗部
-        light_bound = 220
-        mask_light = v >= light_bound
-        mask_dark = v < light_bound
+        # # 识别图像的亮部和暗部
+        # light_bound = 220
+        # mask_light = v >= light_bound
+        # mask_dark = v < light_bound
         
-        v[mask_light] = np.clip(v[mask_light] + (100 + 0.5 * self.severity), 0, 255)
-        v[mask_dark] = np.clip(v[mask_dark] - (60 + 0.5 * self.severity), 0, 255)
-        # v = np.clip(v, 0, 255)
-        final_hsv = cv2.merge((h, s, v))
-        image = cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
+        # v[mask_light] = np.clip(v[mask_light] + (100 + 0.5 * self.severity), 0, 255)
+        # v[mask_dark] = np.clip(v[mask_dark] - (60 + 0.5 * self.severity), 0, 255)
+        # # v = np.clip(v, 0, 255)
+        # final_hsv = cv2.merge((h, s, v))
+        # image = cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
         file_path = f'./corruption_valid/{sample_idx}.jpg'
         image_aug_rgb = self.sun_sim_img(image, 5, watch_img, file_path, temp_dict_trans_information)
         return image_aug_rgb
@@ -250,7 +252,7 @@ class ImageAddSunMono():
 
         # corruption severity-related parameters
         # sun_radius = [30, 40, 50, 60, 70][severity-1]
-        sun_radius = 20 + 0.5 * severity
+        sun_radius = 100 + 0.5 * severity
         
         # corruption severity-independent parameters
         
@@ -1180,8 +1182,11 @@ def get_4corner(points):
 
 class ImageBBoxMotionBlurFrontBack(): 
     def __init__(self, severity, corrput_list=[0.02*i for i in range(1,6)]) -> None:
-        self.severity = severity
-        self.corrpution = corrput_list[severity-1]
+        # self.severity = severity
+        # self.corrpution = corrput_list[severity//20]
+
+        # NOTE: 此处corrpution在源码中拼写错误，不要使用正确写法
+        self.corrpution = 0.02 * (1 + severity / 20)     
 
     def __call__(self, image, lidar2img, bboxes_centers, bboxes_corners, watch_img=False, file_path='') -> np.array:
         """
@@ -1266,8 +1271,10 @@ class ImageBBoxMotionBlurFrontBack():
 
 class ImageBBoxMotionBlurFrontBackMono(): 
     def __init__(self, severity, corrput_list=[0.02*i for i in range(1,6)]) -> None:
-        self.severity = severity
-        self.corrpution = corrput_list[severity-1]
+        # self.severity = severity
+        # self.corrpution = corrput_list[severity-1]
+        # NOTE: 此处corrpution在源码中拼写错误，不要使用正确写法
+        self.corrpution = 0.02 * (1 + severity / 20)
 
     def __call__(self, image, cam2img, bboxes_centers, bboxes_corners, watch_img=False, file_path='') -> np.array:
         """
@@ -1299,11 +1306,13 @@ class ImageBBoxMotionBlurFrontBackMono():
         image_aug_layer = self.zoom_blur(image_rgb_255, corrpution)
         images_aug = image_aug_layer * mask_bool_float + (1-mask_bool_float) * image_rgb_255
         image_aug_np_rgb_255 = images_aug.astype(np.uint8)
+        # print(image_aug_np_rgb_255.shape)
 
         if watch_img:
-            mask_bool_float_tensor = torch.from_numpy(mask_bool_float).float().permute(2,0,1).repeat(3,1,1)
-            images_aug_tensor = torch.from_numpy(images_aug).float().permute(2,0,1)/255
-            save_image([mask_bool_float_tensor, images_aug_tensor], nrow=1, fp=file_path)
+            # mask_bool_float_tensor = torch.from_numpy(mask_bool_float).float().permute(2,0,1).repeat(3,1,1)
+            # images_aug_tensor = torch.from_numpy(images_aug).float().permute(2,0,1)/255
+            # save_image([mask_bool_float_tensor, images_aug_tensor], nrow=1, fp=file_path)
+            save_image(torch.from_numpy(image_aug_np_rgb_255).permute(2,0,1).float() /255., file_path)
             # print()
         return image_aug_np_rgb_255
 
@@ -1348,8 +1357,10 @@ class ImageBBoxMotionBlurFrontBackMono():
 
 class ImageBBoxMotionBlurLeftRight(): 
     def __init__(self, severity, corrput_list=[0.02*i for i in range(1,6)]) -> None:
-        self.severity = severity
-        self.corrpution = corrput_list[severity-1]
+        # self.severity = severity
+        # self.corrpution = corrput_list[severity-1]
+        # NOTE: 此处corrpution在源码中拼写错误，不要使用正确写法
+        self.corrpution = 0.02 * (1 + severity / 20)
 
     def __call__(self, image, lidar2img, bboxes_centers, bboxes_corners, watch_img=False, file_path='') -> np.array:
         """
@@ -1405,8 +1416,10 @@ class ImageBBoxMotionBlurLeftRight():
 
 class ImageBBoxMotionBlurLeftRightMono(): 
     def __init__(self, severity, corrput_list=[0.02*i for i in range(1,6)]) -> None:
-        self.severity = severity
-        self.corrpution = corrput_list[severity-1]
+        # self.severity = severity
+        # self.corrpution = corrput_list[severity-1]
+        # NOTE: 此处corrpution在源码中拼写错误，不要使用正确写法
+        self.corrpution = 0.02 * (1 + severity / 20)
 
     def __call__(self, image, cam2img, bboxes_centers, bboxes_corners, watch_img=False, file_path='') -> np.array:
         """
@@ -1452,13 +1465,11 @@ class ImageBBoxMotionBlurLeftRightMono():
         image_aug_np_rgb_255 = images_aug.astype(np.uint8)
 
         if watch_img:
-            mask_bool_float_tensor = torch.from_numpy(mask_bool_float).float().permute(2,0,1).repeat(3,1,1)
-            images_aug_tensor = torch.from_numpy(images_aug).float().permute(2,0,1)/255
-            save_image([mask_bool_float_tensor, images_aug_tensor], nrow=1, fp=file_path)
+            # mask_bool_float_tensor = torch.from_numpy(mask_bool_float).float().permute(2,0,1).repeat(3,1,1)
+            # images_aug_tensor = torch.from_numpy(images_aug).float().permute(2,0,1)/255
+            # save_image([mask_bool_float_tensor, images_aug_tensor], nrow=1, fp=file_path)
+            save_image(torch.from_numpy(image_aug_np_rgb_255).permute(2,0,1).float() /255., file_path)
         return image_aug_np_rgb_255
-
-
-
 
 
 
@@ -1520,7 +1531,7 @@ class ImageMotionBlurFrontBack():
 class ImageMotionBlurLeftRight():
     def __init__(self, severity, corrput_list=[0.02*i for i in range(1,6)]) -> None:
         # self.severity = severity
-        self.corruption = 0.02 * (1 + severity // 20)
+        self.corruption = 0.02 * (1 + severity / 20)
 
     def __call__(self, image, sample_idx, watch_img=True, file_path='') -> np.array:
         """
@@ -1611,9 +1622,33 @@ class ImageAddUniformNoise():
         return image_aug_rgb_255
 
     def uniform_noise(self, x, severity):
-        c = [.08, .12, 0.18, 0.26, 0.38][severity - 1]
+        # c = [.08, .12, 0.18, 0.26, 0.38][severity - 1]
+        c = 0.08 + severity * 0.0375
         x = np.array(x) / 255.
         return (np.clip(x + np.random.uniform(low=-c, high=c, size=x.shape), 0, 1) * 255).astype(np.uint8)
+
+
+class ImageAddShotNoise():
+    def __init__(self, severity, seed=2022) -> None:
+        self.iaa_seq = iaa.Sequential([
+            iaa.imgcorruptlike.ShotNoise(severity=severity, seed=seed),
+        ])
+
+    def __call__(self, image, sample_idx, watch_img=True, file_path='') -> np.array:
+        """
+            image should be numpy array : H * W * 3
+            in uint8 (0~255) and RGB
+        """
+        image_rgb_255 = image
+        # iaa requires rgb_255_uint8 img
+        images = image_rgb_255[None]
+        images_aug = self.iaa_seq(images=images)
+        image_aug_rgb_255 = images_aug[0]
+        file_path = f'./corruption_valid/{sample_idx}.jpg'
+        if watch_img:
+            save_image(torch.from_numpy(image_aug_rgb_255).permute(2,0,1).float() /255., file_path)
+        return image_aug_rgb_255
+
         
 
 
